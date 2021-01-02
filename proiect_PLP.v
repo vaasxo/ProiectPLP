@@ -33,15 +33,12 @@ Definition is_declared (x : Var) (sigma : State) :=
 Definition object : Type := string -> option Value.
 Definition heap : Type := nat -> option object.
 
+(*Definition object ().*)
+
 Definition object_ok (o : object) (h : heap) : Prop :=
   forall (s : string) (ref : nat),
     o s = Some (reference ref) ->
     exists obj, h ref = Some obj.
-
-Definition recursive (v : Typ) (s : string) (stmt : stmt) : Value :=
-| (* if the stmt returns a value, return it *)
-| (* else*)
-| (* run the function with the new statement*)
 
 Inductive Exp :=
 | anum : nat -> Exp
@@ -72,3 +69,28 @@ Notation "A <' B" := (bless A B) (at level 53).
 Notation "A >' B" := (bgreat A B) (at level 53).
 Notation "A <=' B" := (bleq A B) (at level 53).
 Notation "A >=' B" := (bgeq A B) (at level 53).
+
+Check 2 +' 2.
+Check 2 +' btrue.
+Check (band 2 2).
+
+Inductive Stmt :=
+| decl : Var -> Stmt 
+| skip : Stmt
+| assignment : Var -> Exp -> Stmt
+| sequence : Stmt -> Stmt -> Stmt
+| ifthenelse : Exp -> Stmt -> Stmt -> Stmt
+| ifthen : Exp -> Stmt -> Stmt
+| while : Exp -> Stmt -> Stmt.
+
+Notation "X =' A" := (assignment X A) (at level 50).
+Notation "S1 ;; S2" := (sequence S1 S2) (at level 90).
+
+Definition recursive (v : Typ) (s : string) (stmt : Stmt) : Value :=
+match (eval_stmt stmt) with
+| Value x => x
+| stmt' => (recursive v s stmt')
+end.
+
+
+
