@@ -85,12 +85,15 @@ Inductive Stmt :=
 
 Notation "X =' A" := (assignment X A) (at level 50).
 Notation "S1 ;; S2" := (sequence S1 S2) (at level 90).
+Notation "if ( A ) B" := (ifthen A B) (at level 90).
+Notation "if ( A ) B else C" := (ifthenelse A B C) (at level 90).
 
 Definition recursive (v : Typ) (s : string) (stmt : Stmt) : Value :=
 match (eval_stmt stmt) with
 | Value x => x
 | stmt' => (recursive v s stmt')
 end.
+
 
 
 
