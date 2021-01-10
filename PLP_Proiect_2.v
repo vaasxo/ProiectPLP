@@ -123,11 +123,11 @@ Check(ValAdresa).
 
 Inductive Stmt :=
 | var_declare : string -> Stmt 
-| object_declare : string -> Object -> Stmt
+| object_declare : Object -> Stmt
 | function_declare : Function -> Stmt -> Stmt
 | assignment : string -> Exp -> Stmt 
 | atoi_assignment : string -> string -> Stmt
-| itoa_assignment : string -> Exp -> Stmt
+| itoa_assignment : string -> nat -> Stmt
 | sequence : Stmt -> Stmt -> Stmt
 | ifthenelse : Exp -> Stmt -> Stmt -> Stmt
 | ifthen : Exp -> Stmt -> Stmt
@@ -137,7 +137,7 @@ Notation "'fie' A" := (var_declare A) (at level 90).
 Notation "X ::= A" := (assignment X A) (at level 90).
 Notation "S ;; S'" := (sequence S S') (at level 93, right associativity).
 Notation "A <{ B }>" := (function_declare A B) (at level 90).
-Notation "A 'is' B" := (object_declare A B) (at level 90).
+Notation "'class' A" := (object_declare A) (at level 90).
 Notation "X ::= 'atoi'( Y )" := (atoi_assignment X Y) (at level 94).
 Notation "X ::= 'itoa'( Y )" := (itoa_assignment X Y) (at level 94).
 
@@ -152,7 +152,7 @@ Compute ex1.
 
 Example ex2 :=
 fie "obiect" ;;
-"obiect" is object ("student") (["age","name","grade"]) ("getGrade" takes []);;
+class object ("student") (["age","name","grade"]) ("getGrade" takes []);;
 ifthenelse ("a"=='"x") ("a"::=10) ("a"::=1);;
 while ("a">='0) ("a"::="a"-'1);;
 fie "b";;
@@ -300,48 +300,52 @@ match e with
 | bor b1 b2=> if (Nat.eqb (expEval b1 s v) (expEval b2 s v)) then 1 else 0
 end.
 
+Definition typeOf (e : Exp) : Value :=
+match e with
+| anum a => nat_val a
+| btrue => bool_val true
+| bfalse => bool_val false
+| avar s => string_val s
+| _ => undef
+end.
+
 (*functions*)
 
 (*objects*)
+
+
 
 (*statements*)
 
 Fixpoint eval (pgm : Stmt) (s : Variabila) (v : Adresa) (gas : nat) : Adresa :=
 match gas with
 | 0 => v
-| S gas' => match s with
+| S gas' => match pgm with
             | var_declare var => if(is_declared var s v)
                                  then v
-                                 else (updateValues v 
-                                      ((updateState
-                                      ((updateState s "memPointer" (s("memPointer")+1) var ("memPointer")))
-                                      "memPointer") undef)
-            | object_declare obj var =>
-            | function_declare funct stmt => functionEval funct stmt s v
+                                 else updateValues v 
+                                      ((updateState (updateState s "memPointer" (s("memPointer")+1)) var (s("memPointer"))) "memPointer") 
+                                      undef
+            | object_declare obj => (*objEval(obj)*) v
+            | function_declare funct stmt => (*functionEval funct stmt s v*) v
+            | assignment var exp => if(is_declared var s v)
+                                    then updateValues v (s var) (typeOf exp)
+                                    else v
             | atoi_assignment var str => if(is_declared var s v)
-                                         then (updateValues v (s var) (nat_val atoi(str)))
+                                         then updateValues v (s var) (nat_val (atoi(str)))
+                                         else v
             | itoa_assignment var n => if(is_declared var s v)
-                                       then (updateValues v (s var) (string_val itoa(n))
-            | sequence stmt1 stmt2 => eval stmt2 (eval stmt1 env gas') gas'
+                                       then updateValues v (s var) (string_val (itoa(n)))
+                                       else v
+            | sequence stmt1 stmt2 => eval stmt2 s (eval stmt1 s v gas') gas'
             | ifthen cond stmt =>  if (expEval cond s v)
                                    then eval stmt s v gas'
+                                   else v
             | ifthenelse cond stmt stmt' => if (expEval cond s v)
                                             then eval stmt s v gas'
                                             else eval stmt s v gas'
-            | while cond s' => if (expEval cond s v)
-                               then eval (stmt' ;; (while cond stmt')) s v gas'
+            | while cond stmt' => if (expEval cond s v)
+                               then eval (stmt' ;; while cond stmt') s v gas'
                                else v
             end 
 end.
-
-Inductive Stmt :=
-| var_declare : string -> Stmt 
-| object_declare : string -> Object -> Stmt
-| function_declare : Function -> Stmt -> Stmt
-| assignment : string -> Exp -> Stmt 
-| atoi_assignment : string -> string -> Stmt
-| itoa_assignment : string -> Exp -> Stmt
-| sequence : Stmt -> Stmt -> Stmt
-| ifthenelse : Exp -> Stmt -> Stmt -> Stmt
-| ifthen : Exp -> Stmt -> Stmt
-| while : Exp -> Stmt -> Stmt.
