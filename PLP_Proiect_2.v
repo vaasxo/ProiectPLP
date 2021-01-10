@@ -6,6 +6,8 @@ Require Import Strings.String.
 Open Scope string_scope.
 Scheme Equality for string.
 
+(*SYNTAX*)
+
 (*Arithmetic expressions*)
 
 Inductive Exp :=
@@ -100,6 +102,22 @@ Compute object ("car") (["make","model","color"]) ("setColor" takes ["color"]).
 
 (*Notation "A.B" := (objval A B)(at level 30).*)
 
+(*Memory*)
+
+Inductive Value :=
+| undef : Value
+| nat_val : nat -> Value
+| bool_val : bool -> Value.
+
+Scheme Equality for Value.
+
+Definition Variabila := string -> nat.
+Definition Adresa := nat -> Value.
+
+Variable ValAdresa : nat.
+
+Check(ValAdresa).
+
 (*statements*)
 
 Inductive Stmt :=
@@ -136,6 +154,66 @@ fie "b";;
 ifthen (1) ("b"::=10+'5)
 .
 Compute ex2.
+
+(*SEMANTICS*)
+
+(*Memory*)
+
+Definition nval (n : Value) : nat :=
+match n with
+| nat_val n => n
+| _ => 0
+end.
+
+Definition bval (b : Value) : bool :=
+match b with
+| bool_val b => b
+| _ => false
+end.
+
+Definition State : Variabila := fun n => 0.
+Definition Values : Adresa := fun n => undef.
+
+Definition updateState (state : Variabila) (s : string) (value : nat) : Variabila :=
+  fun s' => 
+    if (string_eq_dec s' s)
+    then value
+    else (state s').
+
+Definition updateValues (values : Adresa) (n : nat) (value : Value) : Adresa :=
+  fun n' => 
+    if (Nat.eqb n' n)
+    then value
+    else (values n'). 
+
+Definition is_declared (s : string) (state : Variabila) (values : Adresa) :=
+  if (Value_beq (values (state s)) undef)
+  then false
+  else true.
+
+Compute (updateState State "valAdresa" 0).
+
+(*Exp*)
+
+Fixpoint expEval (e : Exp) (s : Variabila) (v : Adresa) : nat :=
+  match e with
+  | avar var => nval(v(s var))
+  | anum n' => n'
+  | btrue => 1
+  | bfalse => 0
+  | aplus e1 e2 => (expEval e1 s v) + (expEval e2 s v)
+  | aminus e1 e2 => (expEval e1 s v) - (expEval e2 s v)
+  | amul e1 e2 => (expEval e1 s v) * (expEval e2 s v) 
+  | adiv e1 e2 => Nat.div (expEval e1 s v) (expEval e2 s v)
+  | bless b1 b2 => if (Nat.ltb (expEval b1 s v) (expEval b2 s v)) then 1 else 0
+  | bgreat b1 b2=> if (Nat.ltb (expEval b2 s v) (expEval b1 s v)) then 1 else 0
+  | bleq b1 b2=> if (Nat.leb (expEval b1 s v) (expEval b2 s v)) then 1 else 0
+  | bgeq b1 b2=> if (Nat.leb (expEval b2 s v) (expEval b1 s v)) then 1 else 0
+  | beq b1 b2=> if (Nat.eqb (expEval b1 s v) (expEval b1 s v)) then 1 else 0
+  | bnot b' => match (expEval b' s v) with | 0 => 0 | _ => 1 end
+  | band b1 b2 => 0
+  | bor b1 b2=> if (Nat.eqb (expEval b1 s v) (expEval b2 s v)) then 1 else 0
+  end.
 
 
 
