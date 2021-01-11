@@ -268,7 +268,7 @@ Definition is_declared (s : string) (state : Variabila) (values : Adresa) :=
   else true.
 
 Compute (updateState State "valAdresa" 0).
-Compute (updateState State "memPointer" 0)("memPointer").
+Compute (updateState State "memPointer" 1)("memPointer").
 
 (*Exp*)
 
@@ -319,7 +319,7 @@ end.
 
 Definition objEval (obj : Object) (s : Variabila) (v : Adresa) : Adresa :=
 match obj with
-|object name list func => getElement list s (functionEval func s v)
+|object name list func => getElement list s (functionEval func s v) (*defines both method variables and member variables*)
 end.
 
 (*statements*)
@@ -332,7 +332,7 @@ match gas with
                                  then v
                                  else updateValues v 
                                       ((updateState (updateState s "memPointer" (s("memPointer")+1)) var (s("memPointer"))) "memPointer") 
-                                      undef
+                                      (nat_val 1) (*This should be undef - changed to nat_val 1 for the sake of explaining the issue*)
             | object_declare obj => objEval obj s v
             | function_declare funct stmt => eval stmt s (functionEval funct s v) gas' 
             | assignment var exp => if(is_declared var s v)
@@ -357,20 +357,18 @@ match gas with
             end 
 end.
 
-Example ex3 :=
-fie "c" ;;
-"someFunction" takes [ "d" ] <{ "d" ::= 10 }>;;
-fie "b" ;;
-atoi_assignment "c" "10" ;;
-"b" ::= "ana"
-.
-Definition Values' := eval ex3 State Values 10.
+(*Missing class method/member accesing such as object.member*)
 
-Compute State "b".
-Compute Values' 4.
+Example ex3 :=
+fie "c".
+
+Definition Values' := (eval ex3 State Values 100).
+
+Compute State "memPointer". (*Although memPointer is still 0-*)
+Compute Values' 1. (*-the value after one definition works fine. The issue is that eval does not return the updated eval.
+                    Either a different env that encapsulates both of them should exist, or a way to return or keep tracks of both State and Values*)
 
 Example ex4 :=
-fie "obiect" ;;
 class object ("student") (["age","name","grade"]) ("getGrade" takes []);;
 ifthenelse ("a"=='"x") ("a"::=10) ("a"::=1);;
 while ("a">='0) ("a"::="a"-'1);;
@@ -378,4 +376,13 @@ fie "b";;
 ifthen (1) (itoa_assignment "b" 20) ;;
 ifthenelse("b"=='15) ("a"::=2) ("a"::=3)
 .
-Compute eval ex4 State Values 20. 
+
+Example ex5 :=
+fie "c" ;;
+"someFunction" takes [ "d" ] <{ "d" ::= 10 }>;; (*Scope is not simulated, thus function variables should have different names for desired effect*)
+fie "b" ;;
+atoi_assignment "c" "10" ;;
+"b" ::= "ana"
+.
+
+Definition Values'' := eval ex4 State Values 20. 
