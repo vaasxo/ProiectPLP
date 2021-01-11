@@ -69,12 +69,14 @@ Compute ~(btrue or' 0) and' "x".
 (*functions*)
 
 Inductive list_variable : Type :=
-| null
+| nil
 | cons (s : string) (l : list_variable).
 
-Notation "[]" := null (format "[]") : list_scope.
-Notation "[ A ]" := (cons A null) : list_scope.
-Notation "[ A , B , .. , C ]" := (cons A (cons B .. (cons C null) ..)) : list_scope.
+Infix "::" := cons.
+
+Notation "[]" := nil (format "[]") : list_scope.
+Notation "[ A ]" := (cons A nil) : list_scope.
+Notation "[ A , B , .. , C ]" := (cons A (cons B .. (cons C nil) ..)) : list_scope.
 
 Inductive Function :=
 | function : string -> list_variable -> Function.
@@ -92,15 +94,9 @@ Compute "add1toit" takes ["number"].
 Inductive Object :=
 | object : string -> list_variable -> Function -> Object.
 
-Notation "'class' A { B C }" := (object A B C) (at level 200). 
-
 Compute object ("student") (["age","name","grade"]) ("getGrade" takes []).
 
 Compute object ("car") (["make","model","color"]) ("setColor" takes ["color"]).
-
-(*Compute class "car" { ["make", "model", "color"]  "setColor" takes ["color"]}.*)
-
-(*Notation "A.B" := (objval A B)(at level 30).*)
 
 (*Memory*)
 
@@ -114,10 +110,6 @@ Scheme Equality for Value.
 
 Definition Variabila := string -> nat.
 Definition Adresa := nat -> Value.
-
-Variable ValAdresa : nat.
-
-Check(ValAdresa).
 
 (*statements*)
 
@@ -162,7 +154,7 @@ Compute ex2.
 
 (*SEMANTICS*)
 
-(*atoi*)
+(*atoi - itoa*)
 
 Open Scope char_scope.
 
@@ -311,9 +303,24 @@ end.
 
 (*functions*)
 
+Fixpoint getElement (l : list_variable) (s : Variabila) (v : Adresa) {struct l} : Adresa :=
+match l with
+| nil => v
+| str :: nil => (updateValues v ((updateState (updateState s "memPointer" (s("memPointer")+1)) str (s("memPointer"))) "memPointer") undef)
+| str :: l => getElement l s v
+end.
+
+Definition functionEval (f : Function) (s : Variabila) (v : Adresa) : Adresa :=
+match f with
+|function str l => getElement l s v
+end.
+
 (*objects*)
 
-
+Definition objEval (obj : Object) (s : Variabila) (v : Adresa) : Adresa :=
+match obj with
+|object name list func => getElement list s (functionEval func s v)
+end.
 
 (*statements*)
 
@@ -326,8 +333,8 @@ match gas with
                                  else updateValues v 
                                       ((updateState (updateState s "memPointer" (s("memPointer")+1)) var (s("memPointer"))) "memPointer") 
                                       undef
-            | object_declare obj => (*objEval(obj)*) v
-            | function_declare funct stmt => (*functionEval funct stmt s v*) v
+            | object_declare obj => objEval obj s v
+            | function_declare funct stmt => eval stmt s (functionEval funct s v) gas' 
             | assignment var exp => if(is_declared var s v)
                                     then updateValues v (s var) (typeOf exp)
                                     else v
@@ -349,3 +356,26 @@ match gas with
                                else v
             end 
 end.
+
+Example ex3 :=
+fie "c" ;;
+"someFunction" takes [ "d" ] <{ "d" ::= 10 }>;;
+fie "b" ;;
+atoi_assignment "c" "10" ;;
+"b" ::= "ana"
+.
+Definition Values' := eval ex3 State Values 10.
+
+Compute State "b".
+Compute Values' 4.
+
+Example ex4 :=
+fie "obiect" ;;
+class object ("student") (["age","name","grade"]) ("getGrade" takes []);;
+ifthenelse ("a"=='"x") ("a"::=10) ("a"::=1);;
+while ("a">='0) ("a"::="a"-'1);;
+fie "b";;
+ifthen (1) (itoa_assignment "b" 20) ;;
+ifthenelse("b"=='15) ("a"::=2) ("a"::=3)
+.
+Compute eval ex4 State Values 20. 
