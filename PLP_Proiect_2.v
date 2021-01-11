@@ -335,7 +335,7 @@ match gas with
                                       (nat_val 1) (*This should be undef - changed to nat_val 1 for the sake of explaining the issue*)
             | object_declare obj => objEval obj s v
             | function_declare funct stmt => eval stmt s (functionEval funct s v) gas' 
-            | assignment var exp => if(is_declared var s v)
+            | assignment var exp => if(is_declared var s v)  (*Might need further testing on what "x"::="y" returns, should add nval,bval and sval*)
                                     then updateValues v (s var) (typeOf exp)
                                     else v
             | atoi_assignment var str => if(is_declared var s v)
@@ -366,7 +366,9 @@ Definition Values' := (eval ex3 State Values 100).
 
 Compute State "memPointer". (*Although memPointer is still 0-*)
 Compute Values' 1. (*-the value after one definition works fine. The issue is that eval does not return the updated eval.
-                    Either a different env that encapsulates both of them should exist, or a way to return or keep tracks of both State and Values*)
+                    Either a different env that encapsulates both of them should exist, or a way to return or keep tracks of both State and Values
+                    one way of fixing this would be through "Variable ValAdresa : nat." - global counter, unrelated to any state/value - this would fix
+                    the value problem, but we would still need a way to keep track of state for variable names*)
 
 Example ex4 :=
 class object ("student") (["age","name","grade"]) ("getGrade" takes []);;
@@ -379,7 +381,7 @@ ifthenelse("b"=='15) ("a"::=2) ("a"::=3)
 
 Example ex5 :=
 fie "c" ;;
-"someFunction" takes [ "d" ] <{ "d" ::= 10 }>;; (*Scope is not simulated, thus function variables should have different names for desired effect*)
+"someFunction" takes [ "d" ] <{ "d" ::= 10 }>;; (*Scope is not simulated, thus function variables should have different names for desired result*)
 fie "b" ;;
 atoi_assignment "c" "10" ;;
 "b" ::= "ana"
